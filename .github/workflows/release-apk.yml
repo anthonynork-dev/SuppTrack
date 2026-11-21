@@ -33,7 +33,8 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             mkdir -p keystore
-            echo "$KEYSTORE_BASE64" | base64 -d > keystore/supptrack-release.jks
+            echo "Base64-Laenge: $(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | wc -c)"
+            printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > keystore/supptrack-release.jks
             echo "Release-Keystore aktiviert (In-Place-Updates behalten alle Daten!)."
           else
             echo "Hinweis: Kein KEYSTORE_BASE64 Secret gefunden – baue mit Debug-Signatur."
