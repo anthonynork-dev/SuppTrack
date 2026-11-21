@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SuppTrack Vegan</string>
+    <string name="widget_name">SuppTrack · Tages-Widget</string>
+    <string name="widget_description">Zeigt deinen täglichen Supplement-Fortschritt mit Direkt-Abhaken &amp; 7-Tage-Farbskala.</string>
+</resources>

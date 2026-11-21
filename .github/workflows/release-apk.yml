@@ -1,0 +1,68 @@
+name: Build & Release SuppTrack APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Java 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle 8.9 einrichten
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Persistentes Release-Keystore wiederherstellen (falls als Secret hinterlegt)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            mkdir -p keystore
+            echo "$KEYSTORE_BASE64" | base64 -d > keystore/supptrack-release.jks
+            echo "Release-Keystore aktiviert (In-Place-Updates behalten alle Daten!)."
+          else
+            echo "Hinweis: Kein KEYSTORE_BASE64 Secret gefunden – baue mit Debug-Signatur."
+          fi
+
+      - name: APK kompilieren
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/keystore/supptrack-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle assembleRelease
+
+      - name: Version aus build.gradle.kts auslesen
+        id: version
+        run: |
+          VER=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          echo "name=$VER" >> $GITHUB_OUTPUT
+          echo "code=$CODE" >> $GITHUB_OUTPUT
+          cp app/build/outputs/apk/release/app-release*.apk "SuppTrack-v${VER}.apk"
+
+      - name: GitHub Release mit fertiger APK veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.name }}
+          name: SuppTrack Vegan v${{ steps.version.outputs.name }} (Build ${{ steps.version.outputs.code }})
+          body: |
+            Automatisch erstelltes Pixel-Update für **SuppTrack Vegan**.
+            Öffne in der App den Tab **Updates → Nach Update suchen**, um direkt zu aktualisieren.
+          files: SuppTrack-v*.apk
+          make_latest: true
